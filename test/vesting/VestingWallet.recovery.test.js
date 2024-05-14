@@ -10,23 +10,31 @@ const allocation = {
     duration: utils.durationToSeconds('4 years'),
 };
 
-describe('VestingWallet ', function () {
+describe('Vesting recovery', function () {
     prepare();
 
-    describe('Vesting recovery', function () {
-        describe('vesting with admin', function () {
-            beforeEach(async function () {
-                allocation.beneficiary = this.accounts.user1.address;
-                allocation.newBeneficiary = this.accounts.user2.address;
-                allocation.owner = this.accounts.admin.address;
+    for (const { contractName, constructorArgs } of [
+        { contractName: 'VestingWallet' },
+        { contractName: 'VestingWalletV1' },
+        { contractName: 'VestingWalletV2', constructorArgs: Array(4).fill(ethers.constants.AddressZero) },
+    ])
+    describe(contractName, function () {
+        beforeEach(async function () {
+            allocation.beneficiary = this.accounts.user1.address;
+            allocation.newBeneficiary = this.accounts.user2.address;
+            allocation.owner = this.accounts.admin.address;
 
-                this.vesting = await deployUpgradeable(
-                    hre,
-                    'VestingWallet',
-                    'uups',
-                    [allocation.beneficiary, allocation.owner, allocation.start, allocation.cliff, allocation.duration],
-                    { unsafeAllow: 'delegatecall' }
-                );
+            this.vesting = await deployUpgradeable(
+                hre,
+                contractName,
+                'uups',
+                [allocation.beneficiary, allocation.owner, allocation.start, allocation.cliff, allocation.duration],
+                { unsafeAllow: 'delegatecall', constructorArgs }
+            );
+        });
+
+        describe('recover beneficiary', function () {
+            beforeEach(async function () {
                 await Promise.all([this.vesting.start(), this.vesting.cliff(), this.vesting.duration(), this.vesting.beneficiary(), this.vesting.owner()]).then(
                     ([start, cliff, duration, beneficiary, owner]) => {
                         expect(start).to.be.equal(allocation.start);
@@ -38,23 +46,8 @@ describe('VestingWallet ', function () {
                 );
             });
 
-            it('perform recovery (full upgrade)', async function () {
-                this.vesting = await performUpgrade(hre, this.vesting, 'VestingWalletRecovery', {
-                    unsafeAllow: 'delegatecall',
-                });
-
-                // restricted
-                await expect(this.vesting.connect(this.accounts.other).updateBeneficiary(this.accounts.other.address))
-                    .to.be.revertedWith(`Ownable: caller is not the owner`);
-
-                // authorized
-                await expect(this.vesting.connect(this.accounts.admin).updateBeneficiary(allocation.newBeneficiary))
-                    .to.emit(this.vesting, 'BeneficiaryUpdate').withArgs(allocation.newBeneficiary);
-            });
-
-            it('perform recovery (transitory upgrade)', async function () {
+            it('perform upgrade', async function () {
                 const implementation = await hre.upgrades.erc1967.getImplementationAddress(this.vesting.address);
-
                 await performUpgrade(hre, this.vesting, 'VestingWalletRecoveryLight', {
                     call: { fn: 'changeOwnerAndUpgrade', args: [allocation.newBeneficiary, implementation] },
                     unsafeAllow: 'delegatecall'
