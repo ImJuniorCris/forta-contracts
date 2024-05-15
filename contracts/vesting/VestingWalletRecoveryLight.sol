@@ -64,7 +64,6 @@ contract VestingWalletRecoveryLight {
         return _IMPLEMENTATION_SLOT;
     }
 
-
     function upgradeTo(address newImplementation) external {
         require(msg.sender == _owner);
         StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = newImplementation;
