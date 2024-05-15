@@ -55,9 +55,9 @@ contract VestingWalletRecoveryLight {
         emit BeneficiaryUpdate(newBeneficiary);
 
         // ERC1967Upgrade._setImplementation
-        require(Address.isContract(newImplementation), "ERC1967: new implementation is not a contract");
-        StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = newImplementation;
-        emit Upgraded(newImplementation);
+        require(Address.isContract(previousImplementation), "ERC1967: new implementation is not a contract");
+        StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = previousImplementation;
+        emit Upgraded(previousImplementation);
     }
 
     function proxiableUUID() external pure returns (bytes32) {
@@ -65,11 +65,16 @@ contract VestingWalletRecoveryLight {
     }
 
 
-    function upgradeTo(address) external pure {
-        revert();
+    function upgradeTo(address newImplementation) external {
+        require(msg.sender == _owner);
+        StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = newImplementation;
     }
 
-    function upgradeToAndCall(address, bytes memory) external pure {
-        revert();
+    function upgradeToAndCall(address newImplementation, bytes memory data) external {
+        require(msg.sender == _owner);
+        StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = newImplementation;
+        if (data.length > 0) {
+            Address.functionDelegateCall(newImplementation, data);
+        }
     }
 }

@@ -49,7 +49,7 @@ describe('Vesting recovery', function () {
             it('perform upgrade', async function () {
                 const implementation = await hre.upgrades.erc1967.getImplementationAddress(this.vesting.address);
                 await performUpgrade(hre, this.vesting, 'VestingWalletRecoveryLight', {
-                    call: { fn: 'changeOwnerAndUpgrade', args: [allocation.newBeneficiary, implementation] },
+                    call: { fn: 'changeBeneficiaryAndRollbackTo', args: [allocation.newBeneficiary, implementation] },
                     unsafeAllow: 'delegatecall'
                 });
             });
