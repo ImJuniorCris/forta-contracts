@@ -44,11 +44,13 @@ contract VestingWalletRecoveryLight {
     event Upgraded(address indexed implementation);
     event BeneficiaryUpdate(address newBeneficiary);
 
-    function changeOwnerAndUpgrade(address newBeneficiary, address newImplementation) external {
+    /// @dev The `previousImplementation` address MUST correspond to the real previous implementation.
+    /// Otherwise, upgrading to this implementation contract and calling this function will leave the new implementation uninitialized.
+    function changeBeneficiaryAndRollbackTo(address newBeneficiary, address previousImplementation) external {
         // restrict to owner, in case the upgrade misses the "andCall" part.
         require(msg.sender == _owner);
 
-        // change ownership
+        // change beneficiary
         _beneficiary = newBeneficiary;
         emit BeneficiaryUpdate(newBeneficiary);
 
